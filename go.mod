@@ -1,3 +1,3 @@
-module github.com/stianeikeland/go-rpio/v4
+module github.com/peergum/go-rpio/v4
 
 go 1.21
