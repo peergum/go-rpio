@@ -3,60 +3,62 @@ Package rpio provides GPIO access on the Raspberry PI without any need
 for external c libraries (eg. WiringPi or BCM2835).
 
 Supports simple operations such as:
-       - Pin mode/direction (input/output/clock/pwm,alt0,alt1,alt2,alt3,alt4,alt5)
-       - Pin write (high/low)
-       - Pin read (high/low)
-       - Pin edge detection (no/rise/fall/any)
-       - Pull up/down/off
-Also clock/pwm related oparations:
-       - Set Clock frequency
-       - Set Duty cycle
-And SPI oparations:
-       - SPI transmit/recieve/exchange bytes
-       - Set speed
-       - Chip select
+  - Pin mode/direction (input/output/clock/pwm,alt0,alt1,alt2,alt3,alt4,alt5)
+  - Pin write (high/low)
+  - Pin read (high/low)
+  - Pin edge detection (no/rise/fall/any)
+  - Pull up/down/off
+
+Also clock/pwm related operations:
+  - Set Clock frequency
+  - Set Duty cycle
+
+And SPI operations:
+  - SPI transmit/receive/exchange bytes
+  - Set speed
+  - Chip select
 
 Example of use:
 
-       rpio.Open()
-       defer rpio.Close()
+	rpio.Open()
+	defer rpio.Close()
 
-       pin := rpio.Pin(4)
-       pin.Output()
+	pin := rpio.Pin(4)
+	pin.Output()
 
-       for {
-           pin.Toggle()
-           time.Sleep(time.Second)
-       }
+	for {
+	    pin.Toggle()
+	    time.Sleep(time.Second)
+	}
 
 The library use the raw BCM2835 pinouts, not the ports as they are mapped
 on the output pins for the raspberry pi, and not the wiringPi convention.
 
-            Rev 2 and 3 Raspberry Pi                        Rev 1 Raspberry Pi (legacy)
-  +-----+---------+----------+---------+-----+      +-----+--------+----------+--------+-----+
-  | BCM |   Name  | Physical | Name    | BCM |      | BCM | Name   | Physical | Name   | BCM |
-  +-----+---------+----++----+---------+-----+      +-----+--------+----++----+--------+-----+
-  |     |    3.3v |  1 || 2  | 5v      |     |      |     | 3.3v   |  1 ||  2 | 5v     |     |
-  |   2 |   SDA 1 |  3 || 4  | 5v      |     |      |   0 | SDA    |  3 ||  4 | 5v     |     |
-  |   3 |   SCL 1 |  5 || 6  | 0v      |     |      |   1 | SCL    |  5 ||  6 | 0v     |     |
-  |   4 | GPIO  7 |  7 || 8  | TxD     | 14  |      |   4 | GPIO 7 |  7 ||  8 | TxD    |  14 |
-  |     |      0v |  9 || 10 | RxD     | 15  |      |     | 0v     |  9 || 10 | RxD    |  15 |
-  |  17 | GPIO  0 | 11 || 12 | GPIO  1 | 18  |      |  17 | GPIO 0 | 11 || 12 | GPIO 1 |  18 |
-  |  27 | GPIO  2 | 13 || 14 | 0v      |     |      |  21 | GPIO 2 | 13 || 14 | 0v     |     |
-  |  22 | GPIO  3 | 15 || 16 | GPIO  4 | 23  |      |  22 | GPIO 3 | 15 || 16 | GPIO 4 |  23 |
-  |     |    3.3v | 17 || 18 | GPIO  5 | 24  |      |     | 3.3v   | 17 || 18 | GPIO 5 |  24 |
-  |  10 |    MOSI | 19 || 20 | 0v      |     |      |  10 | MOSI   | 19 || 20 | 0v     |     |
-  |   9 |    MISO | 21 || 22 | GPIO  6 | 25  |      |   9 | MISO   | 21 || 22 | GPIO 6 |  25 |
-  |  11 |    SCLK | 23 || 24 | CE0     | 8   |      |  11 | SCLK   | 23 || 24 | CE0    |   8 |
-  |     |      0v | 25 || 26 | CE1     | 7   |      |     | 0v     | 25 || 26 | CE1    |   7 |
-  |   0 |   SDA 0 | 27 || 28 | SCL 0   | 1   |      +-----+--------+----++----+--------+-----+
-  |   5 | GPIO 21 | 29 || 30 | 0v      |     |
-  |   6 | GPIO 22 | 31 || 32 | GPIO 26 | 12  |
-  |  13 | GPIO 23 | 33 || 34 | 0v      |     |
-  |  19 | GPIO 24 | 35 || 36 | GPIO 27 | 16  |
-  |  26 | GPIO 25 | 37 || 38 | GPIO 28 | 20  |
-  |     |      0v | 39 || 40 | GPIO 29 | 21  |
-  +-----+---------+----++----+---------+-----+
+	          Rev 2 and 3 Raspberry Pi                        Rev 1 Raspberry Pi (legacy)
+	+-----+---------+----------+---------+-----+      +-----+--------+----------+--------+-----+
+	| BCM |   Name  | Physical | Name    | BCM |      | BCM | Name   | Physical | Name   | BCM |
+	+-----+---------+----++----+---------+-----+      +-----+--------+----++----+--------+-----+
+	|     |    3.3v |  1 || 2  | 5v      |     |      |     | 3.3v   |  1 ||  2 | 5v     |     |
+	|   2 |   SDA 1 |  3 || 4  | 5v      |     |      |   0 | SDA    |  3 ||  4 | 5v     |     |
+	|   3 |   SCL 1 |  5 || 6  | 0v      |     |      |   1 | SCL    |  5 ||  6 | 0v     |     |
+	|   4 | GPIO  7 |  7 || 8  | TxD     | 14  |      |   4 | GPIO 7 |  7 ||  8 | TxD    |  14 |
+	|     |      0v |  9 || 10 | RxD     | 15  |      |     | 0v     |  9 || 10 | RxD    |  15 |
+	|  17 | GPIO  0 | 11 || 12 | GPIO  1 | 18  |      |  17 | GPIO 0 | 11 || 12 | GPIO 1 |  18 |
+	|  27 | GPIO  2 | 13 || 14 | 0v      |     |      |  21 | GPIO 2 | 13 || 14 | 0v     |     |
+	|  22 | GPIO  3 | 15 || 16 | GPIO  4 | 23  |      |  22 | GPIO 3 | 15 || 16 | GPIO 4 |  23 |
+	|     |    3.3v | 17 || 18 | GPIO  5 | 24  |      |     | 3.3v   | 17 || 18 | GPIO 5 |  24 |
+	|  10 |    MOSI | 19 || 20 | 0v      |     |      |  10 | MOSI   | 19 || 20 | 0v     |     |
+	|   9 |    MISO | 21 || 22 | GPIO  6 | 25  |      |   9 | MISO   | 21 || 22 | GPIO 6 |  25 |
+	|  11 |    SCLK | 23 || 24 | CE0     | 8   |      |  11 | SCLK   | 23 || 24 | CE0    |   8 |
+	|     |      0v | 25 || 26 | CE1     | 7   |      |     | 0v     | 25 || 26 | CE1    |   7 |
+	|   0 |   SDA 0 | 27 || 28 | SCL 0   | 1   |      +-----+--------+----++----+--------+-----+
+	|   5 | GPIO 21 | 29 || 30 | 0v      |     |
+	|   6 | GPIO 22 | 31 || 32 | GPIO 26 | 12  |
+	|  13 | GPIO 23 | 33 || 34 | 0v      |     |
+	|  19 | GPIO 24 | 35 || 36 | GPIO 27 | 16  |
+	|  26 | GPIO 25 | 37 || 38 | GPIO 28 | 20  |
+	|     |      0v | 39 || 40 | GPIO 29 | 21  |
+	+-----+---------+----++----+---------+-----+
 
 See the spec for full details of the BCM2835 controller:
 
@@ -64,7 +66,6 @@ https://www.raspberrypi.org/documentation/hardware/raspberrypi/bcm2835/BCM2835-A
 and https://elinux.org/BCM2835_datasheet_errata - for errors in that spec
 
 Changes to support the BCM2711, used on the Raspberry Pi 4, were cribbed from https://github.com/RPi-Distro/raspi-gpio/
-
 */
 package rpio
 
@@ -93,8 +94,8 @@ const (
 	pwmOffset   = 0x20C000
 	spiOffset   = 0x204000
 	intrOffset  = 0x00B000
-
-	memLength = 4096
+	i2cOffset   = 0x804000
+	memLength   = 4096
 )
 
 // BCM 2711 has a different mechanism for pull-up/pull-down/enable
@@ -106,12 +107,12 @@ const (
 )
 
 var (
-	gpioBase int64
-	clkBase  int64
-	pwmBase  int64
-	spiBase  int64
-	intrBase int64
-
+	gpioBase   int64
+	clkBase    int64
+	pwmBase    int64
+	spiBase    int64
+	intrBase   int64
+	i2cBase    int64
 	irqsBackup uint64
 )
 
@@ -122,6 +123,7 @@ func init() {
 	pwmBase = base + pwmOffset
 	spiBase = base + spiOffset
 	intrBase = base + intrOffset
+	i2cBase = base + i2cOffset
 }
 
 // Pin mode, a pin can be set in Input or Output, Clock or Pwm mode
@@ -131,6 +133,7 @@ const (
 	Clock
 	Pwm
 	Spi
+	I2c
 	Alt0
 	Alt1
 	Alt2
@@ -169,17 +172,20 @@ const (
 
 // Arrays for 8 / 32 bit access to memory and a semaphore for write locking
 var (
-	memlock  sync.Mutex
-	gpioMem  []uint32
-	clkMem   []uint32
-	pwmMem   []uint32
-	spiMem   []uint32
-	intrMem  []uint32
+	memlock sync.Mutex
+	gpioMem []uint32
+	clkMem  []uint32
+	pwmMem  []uint32
+	spiMem  []uint32
+	intrMem []uint32
+	i2cMem  []uint32
+
 	gpioMem8 []uint8
 	clkMem8  []uint8
 	pwmMem8  []uint8
 	spiMem8  []uint8
 	intrMem8 []uint8
+	i2cMem8  []uint8
 )
 
 // Input: Set pin as Input
@@ -352,6 +358,13 @@ func PinMode(pin Pin, mode Mode) {
 			f = alt4
 		case 40, 41, 42, 43, 44, 45: // SPI2
 			f = alt4
+		default:
+			return
+		}
+	case I2c:
+		switch pin {
+		case 3, 5: // I2C1
+			f = alt0
 		default:
 			return
 		}
@@ -551,13 +564,14 @@ func PullMode(pin Pin, pull Pull) {
 // Note that some pins share the same clock source, it means that
 // changing frequency for one pin will change it also for all pins within a group.
 // The groups are:
-//   gp_clk0: pins 4, 20, 32, 34
-//   gp_clk1: pins 5, 21, 42, 44
-//   gp_clk2: pins 6 and 43
-//   pwm_clk: pins 12, 13, 18, 19, 40, 41, 45
+//
+//	gp_clk0: pins 4, 20, 32, 34
+//	gp_clk1: pins 5, 21, 42, 44
+//	gp_clk2: pins 6 and 43
+//	pwm_clk: pins 12, 13, 18, 19, 40, 41, 45
 func SetFreq(pin Pin, freq int) {
-	// TODO: would be nice to choose best clock source depending on target frequency, oscilator is used for now
-	sourceFreq := 19200000 // oscilator frequency
+	// TODO: would be nice to choose best clock source depending on target frequency, oscillator is used for now
+	sourceFreq := 19200000 // oscillator frequency
 	if isBCM2711() {
 		sourceFreq = 52000000
 	}
@@ -601,7 +615,7 @@ func SetFreq(pin Pin, freq int) {
 	const PASSWORD = 0x5A000000
 	const busy = 1 << 7
 	const enab = 1 << 4
-	const src = 1 << 0 // oscilator
+	const src = 1 << 0 // oscillator
 
 	clkMem[clkCtlReg] = PASSWORD | (clkMem[clkCtlReg] &^ enab) // stop gpio clock (without changing src or mash)
 	for clkMem[clkCtlReg]&busy != 0 {
@@ -621,23 +635,24 @@ func SetFreq(pin Pin, freq int) {
 
 // SetDutyCycle: Set cycle length (range) and duty length (data) for Pwm pin in M/S mode
 //
-//   |<- duty ->|
-//    __________
-//  _/          \_____________/
-//   |<------- cycle -------->|
+//	 |<- duty ->|
+//	  __________
+//	_/          \_____________/
+//	 |<------- cycle -------->|
 //
 // Output frequency is computed as pwm clock frequency divided by cycle length.
 // So, to set Pwm pin to freqency 38kHz with duty cycle 1/4, use this combination:
 //
-//  pin.Pwm()
-//  pin.DutyCycle(1, 4)
-//  pin.Freq(38000*4)
+//	pin.Pwm()
+//	pin.DutyCycle(1, 4)
+//	pin.Freq(38000*4)
 //
 // Note that some pins share common pwm channel,
 // so calling this function will set same duty cycle for all pins belonging to channel.
 // The channels are:
-//   channel 1 (pwm0) for pins 12, 18, 40
-//   channel 2 (pwm1) for pins 13, 19, 41, 45.
+//
+//	channel 1 (pwm0) for pins 12, 18, 40
+//	channel 2 (pwm1) for pins 13, 19, 41, 45.
 //
 // NOTE without root permission this function will simply do nothing successfully
 func SetDutyCycle(pin Pin, dutyLen, cycleLen uint32) {
@@ -785,6 +800,12 @@ func Open() (err error) {
 		return
 	}
 
+	// Memory map i2c registers to slice
+	i2cMem, i2cMem8, err = memMap(file.Fd(), i2cBase)
+	if err != nil {
+		return
+	}
+
 	backupIRQs() // back up enabled IRQs, to restore it later
 
 	return nil
@@ -812,7 +833,7 @@ func Close() error {
 
 	memlock.Lock()
 	defer memlock.Unlock()
-	for _, mem8 := range [][]uint8{gpioMem8, clkMem8, pwmMem8, spiMem8, intrMem8} {
+	for _, mem8 := range [][]uint8{gpioMem8, clkMem8, pwmMem8, spiMem8, intrMem8, i2cMem8} {
 		if err := syscall.Munmap(mem8); err != nil {
 			return err
 		}

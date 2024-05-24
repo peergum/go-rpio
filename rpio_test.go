@@ -16,6 +16,19 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+//
+//func TestI2C(t *testing.T) {
+//	if err := I2cBegin(I2c1); err != nil {
+//		t.Fatal(err)
+//	}
+//	defer I2cEnd(I2c1)
+//	t.Run("pisugar", func(t *testing.T) {
+//		var buf []byte = make([]byte, 1)
+//		I2cReadRegister(0x04, buf, 1)
+//		fmt.Printf("Read 0x%02x\n", buf[0])
+//	})
+//}
+
 func TestInterrupt(t *testing.T) {
 	logIrqRegs(t)
 	EnableIRQs(1 << 49)
