@@ -8,7 +8,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/peergum/go-rpio"
+	"github.com/peergum/go-rpio/v5"
 )
 
 func main() {

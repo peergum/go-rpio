@@ -10,9 +10,9 @@ Connect a LED with resistor from pin 35 to ground.
 package main
 
 import (
-        "github.com/peergum/go-rpio"
-        "os"
-        "time"
+	"github.com/peergum/go-rpio/v5"
+	"os"
+	"time"
 )
 
 func main() {
