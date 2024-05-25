@@ -6,12 +6,17 @@ import (
 	"time"
 )
 
-type I2cDev int
+type I2cNum int
 
-// I2C devices.
-// Only I2C1 supported for now.
+type I2cDevice struct {
+	num     I2cNum
+	address uint32
+}
+
+// I2C Ports.
+// Only I2c1 supported for now.
 const (
-	I2c0 I2cDev = iota
+	I2c0 I2cNum = iota
 	I2c1        // aux
 	I2c2        // aux
 )
@@ -29,28 +34,27 @@ const (
 
 // control register masks
 const (
-	controlI2CEnable     = 0x00008000 /*!< I2C Enable, 0 = disabled, 1 = enabled */
-	controlInterruptRX   = 0x00000400 /*!< Interrupt on RX */
-	controlInterruptTX   = 0x00000200 /*!< Interrupt on TX */
-	controlInterruptDone = 0x00000100 /*!< Interrupt on DONE */
-	controlStartTransfer = 0x00000080 /*!< Start transfer, 1 = Start a new transfer */
-	controlClearFifo1    = 0x00000020 /*!< Clear FIFO Clear */
-	controlClearFifo2    = 0x00000010 /*!< Clear FIFO Clear */
-	controlRead          = 0x00000001 /*!<	Read transfer */
+	controlI2CEN = 0x00008000 /*!< I2C Enable, 0 = disabled, 1 = enabled */
+	controlINTR  = 0x00000400 /*!< Interrupt on RX */
+	controlINTT  = 0x00000200 /*!< Interrupt on TX */
+	controlINTD  = 0x00000100 /*!< Interrupt on DONE */
+	controlST    = 0x00000080 /*!< Start transfer, 1 = Start a new transfer */
+	controlCLEAR = 0x00000030 /*!< Clear FIFO Clear */
+	controlREAD  = 0x00000001 /*!<	Read transfer */
 )
 
 /* Register masks for BSC_S */
 const (
-	statusClockStretchTimeout = 0x00000200 /*!< Clock stretch timeout */
-	statusError               = 0x00000100 /*!< ACK error */
-	statusRXFull              = 0x00000080 /*!< RXF FIFO full, 0 = FIFO is not full, 1 = FIFO is full */
-	statusTXFull              = 0x00000040 /*!< TXE FIFO full, 0 = FIFO is not full, 1 = FIFO is full */
-	statusRXContainsData      = 0x00000020 /*!< RXD FIFO contains data */
-	statusTXAcceptsData       = 0x00000010 /*!< TXD FIFO can accept data */
-	statusRXNeedsRead         = 0x00000008 /*!< RXR FIFO needs reading (full) */
-	statusTXNeedsWrite        = 0x00000004 /*!< TXW FIFO needs writing (full) */
-	statusTransferDone        = 0x00000002 /*!< Transfer DONE */
-	statusTransferActive      = 0x00000001 /*!< Transfer Active */
+	statusCLKT = 0x00000200 /*!< Clock stretch timeout */
+	statusERR  = 0x00000100 /*!< ACK error */
+	statusRXF  = 0x00000080 /*!< RXF FIFO full, 0 = FIFO is not full, 1 = FIFO is full */
+	statusTXE  = 0x00000040 /*!< TXE FIFO full, 0 = FIFO is not full, 1 = FIFO is full */
+	statusRXD  = 0x00000020 /*!< RXD FIFO contains data */
+	statusTXD  = 0x00000010 /*!< TXD FIFO can accept data */
+	statusRXR  = 0x00000008 /*!< RXR FIFO needs reading (full) */
+	statusTXW  = 0x00000004 /*!< TXW FIFO needs writing (full) */
+	statusDONE = 0x00000002 /*!< Transfer DONE */
+	statusTA   = 0x00000001 /*!< Transfer Active */
 )
 
 const (
@@ -98,13 +102,14 @@ var (
 // It also resets I2C control register.
 //
 // Note that you should disable I2C interface in raspi-config first!
-func I2cBegin(dev I2cDev) error {
+func I2cBegin(dev I2cNum, address uint32) (*I2cDevice, error) {
 	//i2cMem[csReg] = 0 // reset i2c settings to default
 	//if i2cMem[csReg] == 0 {
 	//	// this should not read only zeroes after reset -> mem map failed
 	//	return I2cMapError
 	//}
 
+	Debug("I2C Begin")
 	for _, pin := range getI2cPins(dev) {
 		pin.Mode(I2c)
 	}
@@ -120,12 +125,16 @@ func I2cBegin(dev I2cDev) error {
 	//clearI2cTxRxFifo()
 	//ensure we're staying at 100000kHz (default for the pi and pi sugar)
 	//setI2cDiv(i2cClockDivider2500)
-	return nil
+	i2cDevice := &I2cDevice{
+		num:     dev,
+		address: address,
+	}
+	return i2cDevice, nil
 }
 
 // I2cEnd: Sets I2C pins of given device to default (Input) mode. See I2cBegin.
-func I2cEnd(dev I2cDev) {
-	var pins = getI2cPins(dev)
+func (device *I2cDevice) I2cEnd() {
+	var pins = getI2cPins(device.num)
 	for _, pin := range pins {
 		pin.Mode(Input)
 	}
@@ -134,44 +143,46 @@ func I2cEnd(dev I2cDev) {
 // I2cSpeed: Set (maximal) speed [Hz] of I2C clock.
 // Default is 100kHz, and max is 400kHz, but it's
 // probably better not to change the default
-func I2cSpeed(speed int) {
+func (device *I2cDevice) I2cSpeed(speed int) {
 	coreFreq := 250 * 1000000
 	if isBCM2711() {
 		coreFreq = 550 * 1000000
 	}
 	clockDivider := uint32(coreFreq / speed)
-	I2cSetClockDivider(clockDivider)
+	device.I2cSetClockDivider(clockDivider)
 }
 
 // I2cSetClockDivider sets the value for the clock divider
 // you should restrain to 100-400kHz, and use setBaudrate instead
-func I2cSetClockDivider(clockDivider uint32) {
+func (device *I2cDevice) I2cSetClockDivider(clockDivider uint32) {
+	Debug("I2C Clock divider set to %d", clockDivider)
 	i2cMem[clockDividerReg] = clockDivider
 }
 
 // I2cSetSlaveAddress sets the slave address to communicate with
-func I2cSetSlaveAddress(addr uint32) {
-	i2cMem[slaveAddressReg] = addr
+func (device *I2cDevice) I2cSetSlaveAddress(address uint32) {
+	device.address = address
 }
 
-func I2cSetBaudrate(baudrate int) {
+func (device *I2cDevice) I2cSetBaudrate(baudrate int) {
 	coreFreq := 250 * 1000000
 	if isBCM2711() {
 		coreFreq = 550 * 1000000
 	}
 	clockDivider := (uint32(coreFreq/baudrate) / 2) * 2 // ensure even number
-	I2cSetClockDivider(clockDivider)
+	device.I2cSetClockDivider(clockDivider)
 }
 
 // I2cTransmit takes one or more bytes and send them to slave.
 //
 // Data received from slave are ignored.
 // Use spread operator to send slice of bytes.
-func I2cWrite(data ...byte) int {
+func (device *I2cDevice) I2cWrite(data ...byte) int {
+	i2cMem[slaveAddressReg] = device.address
 	// clear FIFO
-	i2cSetBits(controlReg, controlClearFifo1, controlClearFifo1)
+	i2cSetBits(controlReg, controlCLEAR, controlCLEAR)
 	// Clear Status
-	i2cMem[statusReg] = statusClockStretchTimeout | statusError | statusTransferDone
+	i2cMem[statusReg] = statusCLKT | statusERR | statusDONE
 	// set data length
 	i2cMem[dataLengthReg] = uint32(len(data))
 
@@ -182,19 +193,19 @@ func I2cWrite(data ...byte) int {
 	timeout := 0
 
 	for remaining > 0 && i < FIFOSize {
-		i2cMem[fifoReg] = uint32(data[i])
+		i2cMem[dataFifoReg] = uint32(data[i])
 		i++
 		remaining--
 	}
 
 	/* Enable device and start transfer */
-	i2cMem[controlReg] = controlI2CEnable | controlStartTransfer
+	i2cMem[controlReg] = controlI2CEN | controlST
 
 	/* Transfer is over when BCM2835_BSC_S_DONE */
-	for timeout == 0 && (i2cMem[statusReg]&statusTransferDone) == 0 {
-		for timeout == 0 && remaining > 0 && (i2cMem[statusReg]&statusTXAcceptsData) != 0 {
+	for timeout == 0 && (i2cMem[statusReg]&statusDONE) == 0 {
+		for timeout == 0 && remaining > 0 && (i2cMem[statusReg]&statusTXD) != 0 {
 			/* Write to FIFO */
-			i2cMem[fifoReg] = uint32(data[i])
+			i2cMem[dataFifoReg] = uint32(data[i])
 			i++
 			remaining--
 			/* Make sure we don't loop forever! */
@@ -215,10 +226,10 @@ func I2cWrite(data ...byte) int {
 	if timeout > 0 {
 		/* We had a timeout */
 		reason = i2cErrorTimeout
-	} else if (i2cMem[statusReg] & statusError) != 0 {
+	} else if (i2cMem[statusReg] & statusERR) != 0 {
 		/* Received a NACK */
 		reason = i2cErrorNACK
-	} else if (i2cMem[statusReg] & statusClockStretchTimeout) != 0 {
+	} else if (i2cMem[statusReg] & statusCLKT) != 0 {
 		/* Received Clock Stretch Timeout */
 		reason = i2cErrorClockStretchTimeout
 	} else if remaining > 0 {
@@ -226,49 +237,51 @@ func I2cWrite(data ...byte) int {
 		reason = i2cErrorData
 	}
 
-	i2cSetBits(controlReg, statusTransferDone, statusTransferDone)
+	i2cSetBits(controlReg, statusDONE, statusDONE)
 
 	return reason
 }
 
 /* Read an number of bytes from I2C */
-func I2cRead(buf []byte, len uint32) int {
+func (device *I2cDevice) I2cRead(buf []byte, len uint32) int {
+	i2cMem[slaveAddressReg] = device.address
+
 	remaining := len
 	i := 0
 	reason := i2cReasonOK
 
 	/* Clear FIFO */
-	i2cSetBits(controlReg, controlClearFifo1, controlClearFifo1)
+	i2cSetBits(controlReg, controlCLEAR, controlCLEAR)
 	/* Clear Status */
-	i2cMem[statusReg] = statusClockStretchTimeout | statusError | statusTransferDone
+	i2cMem[statusReg] = statusCLKT | statusERR | statusDONE
 	/* Set Data Length */
 	i2cMem[dataLengthReg] = len
 	/* Start read */
-	i2cMem[controlReg] = controlI2CEnable | controlStartTransfer | controlRead
+	i2cMem[controlReg] = controlI2CEN | controlST | controlREAD
 
 	/* wait for transfer to complete */
-	for (i2cMem[statusReg] & statusTransferDone) == 0 {
+	for (i2cMem[statusReg] & statusDONE) == 0 {
 		/* we must empty the FIFO as it is populated and not use any delay */
-		for remaining > 0 && (i2cMem[statusReg]&statusRXContainsData) != 0 {
+		for remaining > 0 && (i2cMem[statusReg]&statusRXD) != 0 {
 			/* Read from FIFO, no barrier */
-			buf[i] = byte(i2cMem[fifoReg])
+			buf[i] = byte(i2cMem[dataFifoReg])
 			i++
 			remaining--
 		}
 	}
 
 	/* transfer has finished - grab any remaining stuff in FIFO */
-	for remaining > 0 && (i2cMem[statusReg]&statusRXNeedsRead) != 0 {
+	for remaining > 0 && (i2cMem[statusReg]&statusRXR) != 0 {
 		/* Read from FIFO, no barrier */
-		buf[i] = byte(i2cMem[fifoReg])
+		buf[i] = byte(i2cMem[dataFifoReg])
 		i++
 		remaining--
 	}
 
 	/* Received a NACK */
-	if (i2cMem[statusReg] & statusError) != 0 {
+	if (i2cMem[statusReg] & statusERR) != 0 {
 		reason = i2cErrorNACK
-	} else if (i2cMem[statusReg] & statusClockStretchTimeout) != 0 {
+	} else if (i2cMem[statusReg] & statusCLKT) != 0 {
 		/* Received Clock Stretch Timeout */
 		reason = i2cErrorClockStretchTimeout
 	} else if remaining > 0 {
@@ -276,65 +289,70 @@ func I2cRead(buf []byte, len uint32) int {
 		reason = i2cErrorData
 	}
 
-	i2cSetBits(statusReg, statusTransferDone, statusTransferDone)
+	i2cSetBits(statusReg, statusDONE, statusDONE)
 
 	return reason
 }
 
-func I2cReadRegister(regAddr int, buf []byte, len uint32) int {
+func (device *I2cDevice) I2cReadRegister(regAddr uint32, buf []byte, len uint32) int {
+	i2cMem[slaveAddressReg] = device.address
 	remaining := len
 	i := 0
 	reason := i2cReasonOK
 
 	/* Clear FIFO */
-	i2cSetBits(controlReg, controlClearFifo1, controlClearFifo1)
+	i2cSetBits(controlReg, controlCLEAR, controlCLEAR)
 	/* Clear Status */
-	i2cMem[statusReg] = statusClockStretchTimeout | statusError | statusTransferDone
+	i2cMem[statusReg] = statusCLKT | statusERR | statusDONE
 	/* Set Data Length */
 	i2cMem[dataLengthReg] = 1
 	/* Enable device and start transfer */
-	i2cMem[controlReg] = controlI2CEnable
-	i2cMem[fifoReg] = uint32(regAddr)
-	i2cMem[controlReg] = controlI2CEnable | controlStartTransfer
+	i2cMem[controlReg] = controlI2CEN
+	i2cMem[dataFifoReg] = regAddr
+	i2cMem[controlReg] = controlI2CEN | controlST
 
 	/* poll for transfer has started */
-	for (i2cMem[statusReg] & statusTransferActive) == 0 {
+	for (i2cMem[statusReg] & statusTA) == 0 {
+		Debug("Waiting to start transfer")
 		/* Linux may cause us to miss entire transfer stage */
-		if i2cMem[statusReg]&statusTransferDone != 0 {
+		if i2cMem[statusReg]&statusDONE != 0 {
+			Debug("Transfer done?")
 			break
 		}
 	}
 
 	/* Send a repeated start with read bit set in address */
 	i2cMem[dataLengthReg] = len
-	i2cMem[controlReg] = controlI2CEnable | controlStartTransfer | controlRead
+	i2cMem[controlReg] = controlI2CEN | controlST | controlREAD
 
 	/* Wait for write to complete and first byte back. */
 	time.Sleep(time.Duration(3*i2cByteWaitMicroseconds) * time.Microsecond)
 
 	/* wait for transfer to complete */
-	for i2cMem[statusReg]&statusTransferDone == 0 {
+	for i2cMem[statusReg]&statusDONE == 0 {
 		/* we must empty the FIFO as it is populated and not use any delay */
-		for remaining > 0 && i2cMem[statusReg]&statusRXNeedsRead != 0 {
+		for remaining > 0 && i2cMem[statusReg]&statusRXD != 0 {
 			/* Read from FIFO */
-			buf[i] = byte(i2cMem[fifoReg])
+			buf[i] = byte(i2cMem[dataFifoReg])
+			Debug("read %x", buf[i])
 			i++
 			remaining--
 		}
 	}
 
 	/* transfer has finished - grab any remaining stuff in FIFO */
-	for remaining > 0 && (i2cMem[statusReg]&statusRXNeedsRead) != 0 {
+	for remaining > 0 && (i2cMem[statusReg]&statusRXD) != 0 {
 		/* Read from FIFO */
-		buf[i] = byte(i2cMem[fifoReg])
+		buf[i] = byte(i2cMem[dataFifoReg])
+		Debug("read %x", buf[i])
 		i++
 		remaining--
 	}
 
 	/* Received a NACK */
-	if i2cMem[statusReg]&statusError != 0 {
+	if i2cMem[statusReg]&statusERR != 0 {
 		reason = i2cErrorNACK
-	} else if i2cMem[statusReg]&statusClockStretchTimeout != 0 {
+	} else if i2cMem[statusReg]&statusCLKT != 0 {
 		/* Received Clock Stretch Timeout */
 		reason = i2cErrorClockStretchTimeout
 	} else if remaining > 0 {
@@ -342,7 +360,7 @@ func I2cReadRegister(regAddr int, buf []byte, len uint32) int {
 		reason = i2cErrorData
 	}
 
-	i2cSetBits(controlReg, statusTransferDone, statusTransferDone)
+	i2cSetBits(controlReg, statusDONE, statusDONE)
 
 	return reason
 }
@@ -453,7 +471,7 @@ func i2cSetBits(register int, value uint32, mask uint32) {
 	i2cMem[register] = (i2cMem[register] & ^mask) | (i2cMem[register] | value)
 }
 
-func getI2cPins(dev I2cDev) []Pin {
+func getI2cPins(dev I2cNum) []Pin {
 	switch dev {
 	case I2c0:
 		return []Pin{}
