@@ -28,7 +28,7 @@ var (
 )
 
 func init() {
-	flag.BoolVar(&debug, "dio", true, "debug mode for go-rpio")
+	flag.BoolVar(&debug, "dio", false, "debug mode for go-rpio")
 }
 
 func Debug(format string, args ...interface{}) {
