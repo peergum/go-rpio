@@ -134,10 +134,10 @@ func I2cBegin(dev I2cNum, address uint32) (*I2cDevice, error) {
 
 // I2cEnd: Sets I2C pins of given device to default (Input) mode. See I2cBegin.
 func (device *I2cDevice) I2cEnd() {
-	var pins = getI2cPins(device.num)
-	for _, pin := range pins {
-		pin.Mode(Input)
-	}
+	//var pins = getI2cPins(device.num)
+	//for _, pin := range pins {
+	//	pin.Mode(Input)
+	//}
 }
 
 // I2cSpeed: Set (maximal) speed [Hz] of I2C clock.
