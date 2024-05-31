@@ -120,7 +120,9 @@ func I2cBegin(dev I2cNum, address uint32) (*I2cDevice, error) {
 		coreFreq = 550 * 1000000
 	}
 	i2cByteWaitMicroseconds = int64(float64(cdiv) / float64(coreFreq) * 1000000 * 9)
-	log.Printf("cdiv=%d, freq=%d, Microseconds wait per byte: %d", cdiv, coreFreq/cdiv, i2cByteWaitMicroseconds)
+	if cdiv != 0 {
+		log.Printf("cdiv=%d, freq=%d, Microseconds wait per byte: %d", cdiv, coreFreq/cdiv, i2cByteWaitMicroseconds)
+	}
 
 	//clearI2cTxRxFifo()
 	//ensure we're staying at 100000kHz (default for the pi and pi sugar)
